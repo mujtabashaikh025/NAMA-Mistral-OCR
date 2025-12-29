@@ -1,0 +1,7 @@
+streamlit
+google-generativeai
+mistralai
+pandas
+requests
+python-dotenv
+pypdf
