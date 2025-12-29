@@ -118,7 +118,7 @@ def batch_extract_all(files):
 
 # --- 3. BATCHED AI ANALYSIS ---
 def analyze_batch(batch_text_list):
-    model = genai.GenerativeModel('gemini-2.5-pro') # Use Flash for speed
+    model = genai.GenerativeModel('gemini-2.5-pro',temperature =0.0) 
     today_str = date.today().strftime("%Y-%m-%d")
 
     prompt = f"""
