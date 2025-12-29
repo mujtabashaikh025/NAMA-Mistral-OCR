@@ -19,10 +19,10 @@ st.set_page_config(page_title="NAMA Compliance Agent", layout="wide")
 # API Configuration
 # API Configuration
 try:
-    api_key = st.secret["GENAI_API_KEY"]
+    api_key = st.secrets["GENAI_API_KEY"]
     genai.configure(api_key=api_key)
     
-    MISTRAL_API_KEY = st.secret["MISTRAL_API_KEY"]
+    MISTRAL_API_KEY = st.secrets["MISTRAL_API_KEY"]
     if not MISTRAL_API_KEY:
          st.warning("MISTRAL_API_KEY not found in environment variables. OCR fallback might fail.")
     else:
