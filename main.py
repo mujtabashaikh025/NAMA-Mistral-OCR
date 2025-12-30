@@ -1,24 +1,37 @@
 import streamlit as st
-from PIL import Image
-#app_page = st.Page(page="app.py", title="📝 Document Verification")
-#compliance_page = st.Page(page="pages/compliance.py", title="🚀 Report Generation")
-# st.image("nama-logo.png")
-# 1. Open the images
-img1 = Image.open("nama-logo.png")
+# 1. Page Configuration
+st.set_page_config(
+    page_title="Document Verification Portal",
+    layout="wide",  # This makes the layout span the full width like your screenshot
+    initial_sidebar_state="expanded"
+)
 
-# 2. Resize them to specific dimensions (width, height)
-# You can also crop them to maintain aspect ratio if preferred
-s1 = (250, 200) 
-img1_resized = img1.resize(s1)
+# Optional: Add some CSS to reduce top white space for a tighter header
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# 3. Display in columns
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns([1.5, 6, 2], gap="small", vertical_alignment="center")
 
 with col1:
-    st.image(img1_resized)
+    # REPLACE 'nama_logo.png' with your actual file path
+    # 'use_column_width=False' keeps it from getting too big
+    st.image("NG-Service-logo.png", width=250) 
 
 with col2:
-    st.image("velyana-new.png")
+    # HTML is used here to force the text to be perfectly centered
+    st.markdown(
+        "<h1 style='text-align: center; margin: 0; font-size: 36px;'>NAMA Compliance AI Audit</h1>", 
+        unsafe_allow_html=True
+    )
+
+with col3:
+    st.image("velyana-new.png", width=200)
 
 pages = {
     "Services": [
@@ -29,8 +42,3 @@ pages = {
 
 pg = st.navigation(pages)
 pg.run()
-# pg = st.navigation(
-#     pages=[app_page, compliance_page]
-# )
-
-# pg.run()
