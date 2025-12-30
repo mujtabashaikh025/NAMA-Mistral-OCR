@@ -13,7 +13,7 @@ st.set_page_config(page_title="Compliance Extractor", layout="wide")
 # st.image("nama-logo.png") # Commented out to prevent error if image is missing locally
 
 # REPLACE with your actual API Key (Use st.secrets in production)
-api_key =  st.secrets["GENAI_API_KEY"]
+api_key =  st.secrets["GEMINI_API_KEY"]
 
 # --- 2. HELPER FUNCTIONS ---
 
