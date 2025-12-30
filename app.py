@@ -13,7 +13,7 @@ import pypdf # NEW LIBRARY
 import io
 # --- 1. CONFIGURATION & SETUP ---
 load_dotenv()
-
+st.set_page_config(page_title="NAMA Compliance Agent", layout="wide")
 # API Configuration
 # API Configuration
 try:
