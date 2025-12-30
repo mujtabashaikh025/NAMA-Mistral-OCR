@@ -11,13 +11,15 @@ from datetime import datetime, date
 from dotenv import load_dotenv
 import pypdf # NEW LIBRARY
 import io
+
 # --- 1. CONFIGURATION & SETUP ---
 load_dotenv()
 st.set_page_config(page_title="NAMA Compliance Agent", layout="wide")
+
 # API Configuration
 # API Configuration
 try:
-    api_key = st.secrets["GEMINI_API_KEY"]
+    api_key = st.secrets["GEMINI_API_KEY"] 
     genai.configure(api_key=api_key)
     
     MISTRAL_API_KEY = st.secrets["MISTRAL_API_KEY"]
@@ -174,125 +176,136 @@ def verify_wras_online(wras_id):
     except:
         return {"status": "Error", "url": search_url}
 
+def clear_submit():
+    # This function clears the file uploader state
+    st.session_state.uploader_id += 1
+
 # --- 5. UI & EXECUTION LOGIC ---
-st.title("NAMA Compliance AI Audit")
+st.title("📝 Intelligent Vendor Compliance Engine")
 
-uploaded_files = st.file_uploader("Upload PDF documents", type=["pdf"], accept_multiple_files=True)
+if "uploader_id" not in st.session_state:
+    st.session_state.uploader_id = 0
 
-if st.button("Run Audit", type="primary"):
-    if uploaded_files:
-        start_time = datetime.now()
-        
-        # 1. Fast Extraction
-        with st.status("Reading Documents...", expanded=True) as status:
-            st.write("Extracting text...")
-            all_texts = batch_extract_all(uploaded_files)
-            status.update(label="Text Extraction Complete!", state="complete", expanded=False)
-
-        # 2. Parallel AI Analysis
-        final_report = {
-            "iso_analysis": [],
-            "wras_analysis": {"found": False, "wras_id": []},
-            "found_documents": [],
-            "missing_documents": set(REQUIRED_DOCS),
-            "wras_online_check": {"status": "N/A", "url": "#"}
-        }
-
-        # Create batches
-        batch_size = 8
-        batches = [all_texts[i:i + batch_size] for i in range(0, len(all_texts), batch_size)]
-        
-        with st.spinner(f"Analyzing {len(batches)} batches with AI..."):
-            # Execute AI batches in PARALLEL
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                future_to_batch = {executor.submit(analyze_batch, batch): batch for batch in batches}
-                
-                for future in as_completed(future_to_batch):
-                    batch_res = future.result()
-                    if isinstance(batch_res, dict):
-                        final_report["iso_analysis"].extend(batch_res.get("iso_analysis", []))
-                        final_report["found_documents"].extend(batch_res.get("found_documents", []))
-                        
-                        wras = batch_res.get("wras_analysis", {})
-                        if isinstance(wras, dict) and wras.get("found"):
-                            final_report["wras_analysis"] = wras
-
-        # Post-Processing
-        for doc in final_report["found_documents"]:
-            doc_type = doc.get("Category")
-            if doc_type in final_report["missing_documents"]:
-                final_report["missing_documents"].remove(doc_type)
-        print("extraction started")
-        extracted_id = final_report["wras_analysis"].get("wras_id")
-        wras_ids = extracted_id
-    
-        if extracted_id:
-            final_report["wras_online_check"] = verify_wras_online(extracted_id)
-
-        st.session_state.analysis_result = final_report
-        
-        duration = (datetime.now() - start_time).total_seconds()
-        st.success(f"Audit Complete in {duration:.2f} seconds!")
-
-# --- 6. DISPLAY RESULTS (Same as before) ---
-if "analysis_result" in st.session_state:
-    res = st.session_state.analysis_result
-    no_of_missing_docs = len(res["missing_documents"])
-    doc_score = round(((14 - no_of_missing_docs) / 14) * 100, 2)
-    
-    wras_data = res.get("wras_online_check", {})
-    wras_url = wras_data.get("url", "#")
-    
-    col1, col2 = st.columns(2)  
-    col1.metric("⛔ Missing Docs", f"{no_of_missing_docs}", border=True)
-    col2.metric("🏆 Score", f"{doc_score}%", border=True)
-
-
-
-    wras_list = []
-    for i in wras_ids:
-        search_url = f"https://www.wrasapprovals.co.uk/approvals-directory/?search={i}"
-        
-        wras_list.append({
-        "WRAS ID": i,
-        "Link": search_url
-        })
-    # Convert to DataFrame
-    df_wras = pd.DataFrame(wras_list)
-
-    st.metric("💧 WRAS Status", wras_data.get("status", "N/A"), border=True)
-    st.dataframe(df_wras, column_config={"Link": st.column_config.LinkColumn("Search URL")}, use_container_width=True)
-
-
-    # st.metric("💧 WRAS Status", wras_data.get("status", "N/A"), border=True)
-    # if wras_url != "#": st.link_button("🔍 Verify", wras_url)
-
-    st.subheader("❌ Missing Documents")
-    if res["missing_documents"]:
-        for m in sorted(list(res["missing_documents"])):
-            st.error(f"Missing: {m}")
-    else:
-        st.success("All required documents found!")
+uploaded_files = st.file_uploader("Upload Vendor Documents", type=["pdf"], accept_multiple_files=True,key=f"file_uploader_{st.session_state.uploader_id}")
+if uploaded_files:
+    st.success(f"Loaded {len(uploaded_files)} files.")
+    st.button("Clear", on_click=clear_submit)
+    if st.button("Run Audit", type="primary"):
+        if uploaded_files:
+            start_time = datetime.now()
             
-    st.subheader("✅ Documents Found")
-    if res["found_documents"]:
-        st.dataframe(pd.DataFrame(res["found_documents"]), use_container_width=True)
+            # 1. Fast Extraction
+            with st.status("Reading Documents...", expanded=True) as status:
+                st.write("Extracting text...")
+                all_texts = batch_extract_all(uploaded_files)
+                status.update(label="Text Extraction Complete!", state="complete", expanded=False)
 
-    st.subheader("🏭 ISO Validation")
-    iso_data = res.get('iso_analysis', [])
-    if iso_data:
-        cols = st.columns(3)
-        for idx, iso in enumerate(iso_data):
-            with cols[idx % 3]:
-                std_name = iso.get('standard', 'Unknown ISO')
-                status = iso.get('compliance_status', 'Fail')
-                days = iso.get('days_remaining', 0)
+            # 2. Parallel AI Analysis
+            final_report = {
+                "iso_analysis": [],
+                "wras_analysis": {"found": False, "wras_id": []},
+                "found_documents": [],
+                "missing_documents": set(REQUIRED_DOCS),
+                "wras_online_check": {"status": "N/A", "url": "#"}
+            }
+
+            # Create batches
+            batch_size = 8
+            batches = [all_texts[i:i + batch_size] for i in range(0, len(all_texts), batch_size)]
+            
+            with st.spinner(f"Analyzing {len(batches)} batches with AI..."):
+                # Execute AI batches in PARALLEL
+                with ThreadPoolExecutor(max_workers=4) as executor:
+                    future_to_batch = {executor.submit(analyze_batch, batch): batch for batch in batches}
+                    
+                    for future in as_completed(future_to_batch):
+                        batch_res = future.result()
+                        if isinstance(batch_res, dict):
+                            final_report["iso_analysis"].extend(batch_res.get("iso_analysis", []))
+                            final_report["found_documents"].extend(batch_res.get("found_documents", []))
+                            
+                            wras = batch_res.get("wras_analysis", {})
+                            if isinstance(wras, dict) and wras.get("found"):
+                                final_report["wras_analysis"] = wras
+
+            # Post-Processing
+            for doc in final_report["found_documents"]:
+                doc_type = doc.get("Category")
+                if doc_type in final_report["missing_documents"]:
+                    final_report["missing_documents"].remove(doc_type)
+            print("extraction started")
+            extracted_id = final_report["wras_analysis"].get("wras_id")
+        
+
+            if extracted_id:
+                final_report["wras_online_check"] = verify_wras_online(extracted_id)
+
+            st.session_state.analysis_result = final_report
+            
+            duration = (datetime.now() - start_time).total_seconds()
+            st.success(f"Audit Complete in {duration:.2f} seconds!")
+
+    # --- 6. DISPLAY RESULTS (Same as before) ---
+    if "analysis_result" in st.session_state:
+        res = st.session_state.analysis_result
+        extracted_id = res.get("wras_analysis", {}).get("wras_id")
+        no_of_missing_docs = len(res["missing_documents"])
+        doc_score = round(((14 - no_of_missing_docs) / 14) * 100, 2)
+        
+        wras_data = res.get("wras_online_check", {})
+        wras_url = wras_data.get("url", "#")
+        
+        col1, col2 = st.columns(2)  
+        col1.metric("⛔ Missing Docs", f"{no_of_missing_docs}", border=True)
+        col2.metric("🏆 Score", f"{doc_score}%", border=True)
+
+        if extracted_id:
+            wras_ids = [x.strip() for x in extracted_id.split(',')]
+            wras_list = []
+            for i in wras_ids:
+                search_url = f"https://www.wrasapprovals.co.uk/approvals-directory/?search={i}"
                 
-                status_color = "green" if "Pass" in status else "red"
-                with st.container(border=True):
-                    st.markdown(f"#### :{status_color}[{std_name}]")
-                    if days < 180:
-                        st.error(f"⚠️ {days} days left")
-                    else:
-                        st.success(f"✅ {days} days left")
-                    st.caption(f"Expires: {iso.get('expiry_date')}")
+                wras_list.append({
+            "WRAS ID": i,
+            "Link": search_url
+            })
+            # Convert to DataFrame
+            df_wras = pd.DataFrame(wras_list)
+
+        st.metric("💧 WRAS Status", wras_data.get("status", "N/A"), border=True)
+        if wras_url != "#": st.dataframe(df_wras, column_config={"Link": st.column_config.LinkColumn("Verify")}, use_container_width=True)
+
+
+        # st.metric("💧 WRAS Status", wras_data.get("status", "N/A"), border=True)
+        # if wras_url != "#": st.link_button("🔍 Verify", wras_url)
+
+        st.subheader("❌ Missing Documents")
+        if res["missing_documents"]:
+            for m in sorted(list(res["missing_documents"])):
+                st.error(f"Missing: {m}")
+        else:
+            st.success("All required documents found!")
+                
+        st.subheader("✅ Documents Found")
+        if res["found_documents"]:
+            st.dataframe(pd.DataFrame(res["found_documents"]), use_container_width=True)
+
+        st.subheader("🏭 ISO Validation")
+        iso_data = res.get('iso_analysis', [])
+        if iso_data:
+            cols = st.columns(3)
+            for idx, iso in enumerate(iso_data):
+                with cols[idx % 3]:
+                    std_name = iso.get('standard', 'Unknown ISO')
+                    status = iso.get('compliance_status', 'Fail')
+                    days = iso.get('days_remaining')
+                    if days is None: days = 0
+                    
+                    status_color = "green" if "Pass" in status else "red"
+                    with st.container(border=True):
+                        st.markdown(f"#### :{status_color}[{std_name}]")
+                        if days < 180:
+                            st.error(f"⚠️ {days} days left")
+                        else:
+                            st.success(f"✅ {days} days left")
+                        st.caption(f"Expires: {iso.get('expiry_date')}")
