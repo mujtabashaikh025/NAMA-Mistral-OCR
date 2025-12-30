@@ -3,10 +3,42 @@ import google.generativeai as genai
 import pandas as pd
 import json
 import re
+import os
 
 # --- 1. CONFIGURATION ---
-st.set_page_config(page_title="Spec Compliance Extractor", layout="wide")
-st.image("nama-logo.png")
+# 1. Page Configuration
+st.set_page_config(
+    page_title="Document Verification Portal",
+    layout="wide",  # This makes the layout span the full width like your screenshot
+    initial_sidebar_state="expanded"
+)
+
+# Optional: Add some CSS to reduce top white space for a tighter header
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns([1.5, 6, 2], gap="small", vertical_alignment="center")
+
+with col1:
+    # REPLACE 'nama_logo.png' with your actual file path
+    # 'use_column_width=False' keeps it from getting too big
+    st.image("NG-Service-logo.png", width=250) 
+
+with col2:
+    # HTML is used here to force the text to be perfectly centered
+    st.markdown(
+        "<h1 style='text-align: center; margin: 0; font-size: 36px;'> </h1>", 
+        unsafe_allow_html=True
+    )
+
+with col3:
+    st.image("velyana-new.png", width=200)
 
 # REPLACE with your actual API Key
 api_key =  st.secrets["GEMINI_API_KEY"] 
@@ -72,29 +104,52 @@ def get_compliance_table(pdf_bytes, key):
 
 # --- 3. STREAMLIT UI ---
 
-st.title("📑 Smart Compliance Table Generator")
-st.markdown("Upload a Vendor Specification PDF (Scanned or Digital) to auto-extract the **Compliance Table**.")
+st.title("📑 Smart Compliance Report Generator")
+#st.markdown("**Upload a Vendor Specification Compliance Statement**.")
 
-uploaded_file = st.file_uploader("Upload Compliance Statement PDF", type=["pdf"])
+uploaded_file = st.file_uploader("**Upload Compliance Statement PDF**", type=["pdf"])
 
-if uploaded_file and st.button("Generate Compliance Table"):
-    with st.spinner("👀 Analyzing PDF Image & Compliance..."):
+if uploaded_file and st.button("Generate Report",type="primary"):
+    
+    with st.spinner("👀 Analyzing Statement & Compliance..."):
         
-        # Get bytes directly
         bytes_data = uploaded_file.getvalue()
         
         if bytes_data:
-            # Get AI Analysis
             table_data = get_compliance_table(bytes_data, api_key)
             
             if table_data:
-                # Display Dataframe
                 df = pd.DataFrame(table_data)
+
+                # --- METRIC CALCULATION LOGIC ---
+                total_items = len(df)
                 
-                # Visual Coloring for Status
+                # We filter for rows that contain "Comply" but NOT "Not Comply" (case insensitive)
+                compliant_df = df[
+                    df['Status'].astype(str).str.contains("Comply", case=False) & 
+                    ~df['Status'].astype(str).str.contains("Not", case=False)
+                ]
+                
+                num_comply = len(compliant_df)
+                num_non_comply = total_items - num_comply
+                
+                # Calculate Percentage: (Comply / Total) * 100
+                if total_items > 0:
+                    compliance_pct = (num_comply / total_items) * 100
+                else:
+                    compliance_pct = 0.0
+
+                # --- DISPLAY METRICS ---
+                a, b = st.columns(2)
+                a.metric("Compliance Percentage", f"{compliance_pct:.1f}%", border=True)
+                b.metric("Number of Non-Compliance", f"{num_non_comply}", border=True)
+
+                # --- VISUALS ---
                 def color_status(val):
-                    color = '#d4edda' if 'Comply' in val and 'Not' not in val else '#f8d7da'
-                    return f'background-color: {color}'
+                    val_str = str(val).lower()
+                    if 'comply' in val_str and 'not' not in val_str:
+                        return 'background-color: #d4edda; color: #155724' # Green
+                    return 'background-color: #f8d7da; color: #721c24'     # Red
 
                 st.subheader("Compliance Report")
                 st.dataframe(
@@ -110,12 +165,10 @@ if uploaded_file and st.button("Generate Compliance Table"):
                 # Download Button
                 csv = df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label="📥 Download Table as CSV",
+                    label="📥 Download Report",
                     data=csv,
                     file_name="compliance_table.csv",
                     mime="text/csv",
                 )
             else:
-
                 st.warning("Could not extract a table. Please ensure the PDF is not password protected.")
-
