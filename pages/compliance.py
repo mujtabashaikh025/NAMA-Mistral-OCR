@@ -3,26 +3,13 @@ import google.generativeai as genai
 import pandas as pd
 import json
 import re
-from dotenv import load_dotenv
-import os
-
-load_dotenv() 
-# Hide Streamlit's default style
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            header {visibility: hidden;}
-            footer {visibility: hidden;}
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # --- 1. CONFIGURATION ---
-st.set_page_config(page_title="Compliance Extractor", layout="wide")
-# st.image("nama-logo.png") # Commented out to prevent error if image is missing locally
+st.set_page_config(page_title="Spec Compliance Extractor", layout="wide")
+st.image("nama-logo.png")
 
-# REPLACE with your actual API Key (Use st.secrets in production)
-api_key =  st.secrets["GEMINI_API_KEY"]
+# REPLACE with your actual API Key
+api_key =  st.secrets["GEMINI_API_KEY"] 
 
 # --- 2. HELPER FUNCTIONS ---
 
@@ -33,12 +20,10 @@ def clean_json_string(json_str):
     return cleaned.strip()
 
 def get_compliance_table(pdf_bytes, key):
-    """Sends the PDF file DIRECTLY to Gemini."""
+    """Sends the PDF file DIRECTLY to Gemini (no local text extraction needed)."""
     try:
         genai.configure(api_key=key)
-        config = genai.GenerationConfig(temperature=0.0)
-        # Using 'gemini-1.5-flash' or 'gemini-1.5-pro' is recommended for PDF vision tasks
-        model = genai.GenerativeModel('gemini-2.5-pro',generation_config=config) 
+        model = genai.GenerativeModel('gemini-3-pro-preview')
         
         system_prompt = """
         You are a Technical QA Engineer reviewing a scanned Vendor Specification Document.
@@ -47,25 +32,33 @@ def get_compliance_table(pdf_bytes, key):
         Look at the document image/PDF and extract a comprehensive Compliance Table.
         
         **INPUT DATA:**
-        The document contains a list of "APPLICABLE STANDARDS" and specific sections. 
+        The document contains a list of "APPLICABLE STANDARDS" (BS EN, ISO, etc.) and specific sections (Climatic Data, Design Considerations, Materials). 
+        Next to each item, the vendor has written a response (e.g., "Comply", "Noncomply", "Not related") or used a **handwritten tick/check mark**.
         
-        **RULES:**
-        1. Identify every Standard and Key Section.
-        2. Determine Status:
-           - "Comply", "Included" -> "Comply"
-           - "Noncomply", "Excluded", "Not related" -> "Not Comply"
-           - Handwritten tick/check mark -> "Comply"
-        3. Remarks: Explain deviations if "Not Comply".
+        **RULES FOR EXTRACTION:**
+        1. **Identify every Standard** (e.g., BS EN 558-1, ISO 9001) and **Key Section** (Climatic Data, Scope, etc.).
+        2. **Determine Status:**
+           - If text says "Comply", "Included", or has a positive context -> **"Comply"**.
+           - If text says "Noncomply", "Not related", "Excluded" -> **"Not Comply"**.
+           - **CRITICAL:** If you see a **handwritten tick ($\checkmark$)** or check mark next to a section (especially Climatic Data/Design Considerations) -> Mark as **"Comply"**.
+        3. **Generate Remark:**
+           - If "Not Comply", explain the deviation (e.g., "Vendor excludes galvanization standard").
+           - If "Comply" but with a note (e.g., "Comply (Ductile Iron used)"), include that note.
 
         **OUTPUT FORMAT (JSON ARRAY):**
         [
-            {"Standard_Section": "BS EN 558-1", "Status": "Comply", "Remark": "Face-to-face dimensions"},
-            {"Standard_Section": "ISO 1461", "Status": "Not Comply", "Remark": "Vendor excludes galvanization"}
+            {"Standard_Section": "BS EN 558-1", "Status": "Comply", "Remark": "Face-to-face dimensions for valves"},
+            {"Standard_Section": "BS EN ISO 1461", "Status": "Not Comply", "Remark": "Vendor states 'Not related', deviating from galvanization requirement"}
         ]
         """
 
-        pdf_data = {"mime_type": "application/pdf", "data": pdf_bytes}
+        # Create the data part for Gemini
+        pdf_data = {
+            "mime_type": "application/pdf",
+            "data": pdf_bytes
+        }
 
+        # Send both prompt and PDF data
         response = model.generate_content(
             contents=[system_prompt, pdf_data],
             generation_config={"response_mime_type": "application/json"}
@@ -78,52 +71,30 @@ def get_compliance_table(pdf_bytes, key):
         return []
 
 # --- 3. STREAMLIT UI ---
-st.title("📑 Smart Compliance Report Generator")
-#st.markdown("**Upload a Vendor Specification Compliance Statement**.")
 
-uploaded_file = st.file_uploader("**Upload Compliance Statement PDF**", type=["pdf"])
+st.title("📑 Smart Compliance Table Generator")
+st.markdown("Upload a Vendor Specification PDF (Scanned or Digital) to auto-extract the **Compliance Table**.")
 
-if uploaded_file and st.button("Generate Report",type="primary"):
-    
-    with st.spinner("👀 Analyzing Statement & Compliance..."):
+uploaded_file = st.file_uploader("Upload Compliance Statement PDF", type=["pdf"])
+
+if uploaded_file and st.button("Generate Compliance Table"):
+    with st.spinner("👀 Analyzing PDF Image & Compliance..."):
         
+        # Get bytes directly
         bytes_data = uploaded_file.getvalue()
         
         if bytes_data:
+            # Get AI Analysis
             table_data = get_compliance_table(bytes_data, api_key)
             
             if table_data:
+                # Display Dataframe
                 df = pd.DataFrame(table_data)
-
-                # --- METRIC CALCULATION LOGIC ---
-                total_items = len(df)
                 
-                # We filter for rows that contain "Comply" but NOT "Not Comply" (case insensitive)
-                compliant_df = df[
-                    df['Status'].astype(str).str.contains("Comply", case=False) & 
-                    ~df['Status'].astype(str).str.contains("Not", case=False)
-                ]
-                
-                num_comply = len(compliant_df)
-                num_non_comply = total_items - num_comply
-                
-                # Calculate Percentage: (Comply / Total) * 100
-                if total_items > 0:
-                    compliance_pct = (num_comply / total_items) * 100
-                else:
-                    compliance_pct = 0.0
-
-                # --- DISPLAY METRICS ---
-                a, b = st.columns(2)
-                a.metric("Compliance Percentage", f"{compliance_pct:.1f}%", border=True)
-                b.metric("Number of Non-Compliance", f"{num_non_comply}", border=True)
-
-                # --- VISUALS ---
+                # Visual Coloring for Status
                 def color_status(val):
-                    val_str = str(val).lower()
-                    if 'comply' in val_str and 'not' not in val_str:
-                        return 'background-color: #d4edda; color: #155724' # Green
-                    return 'background-color: #f8d7da; color: #721c24'     # Red
+                    color = '#d4edda' if 'Comply' in val and 'Not' not in val else '#f8d7da'
+                    return f'background-color: {color}'
 
                 st.subheader("Compliance Report")
                 st.dataframe(
@@ -139,10 +110,12 @@ if uploaded_file and st.button("Generate Report",type="primary"):
                 # Download Button
                 csv = df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label="📥 Download Report",
+                    label="📥 Download Table as CSV",
                     data=csv,
                     file_name="compliance_table.csv",
                     mime="text/csv",
                 )
             else:
+
                 st.warning("Could not extract a table. Please ensure the PDF is not password protected.")
+
