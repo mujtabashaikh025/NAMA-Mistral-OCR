@@ -69,6 +69,12 @@ def get_compliance_table(pdf_bytes, key):
         return []
 
 # --- 3. STREAMLIT UI ---
+st.markdown("""
+    <style>
+        .stAppDeployButton {display:none;}
+        header {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
 st.title("📑 Smart Compliance Report Generator")
 st.markdown("Upload a Vendor Specification PDF to auto-extract the **Compliance Table**.")
 
