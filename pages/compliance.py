@@ -7,6 +7,15 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv() 
+# Hide Streamlit's default style
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="Compliance Extractor", layout="wide")
