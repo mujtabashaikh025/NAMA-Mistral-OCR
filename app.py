@@ -224,8 +224,8 @@ if st.button("Run Audit", type="primary"):
                 final_report["missing_documents"].remove(doc_type)
         print("extraction started")
         extracted_id = final_report["wras_analysis"].get("wras_id")
-        wras_ids = [x.strip() for x in extracted_id.split(',')]
-
+        wras_ids = extracted_id
+    
         if extracted_id:
             final_report["wras_online_check"] = verify_wras_online(extracted_id)
 
