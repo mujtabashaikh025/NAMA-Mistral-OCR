@@ -226,7 +226,6 @@ if st.button("Run Audit", type="primary"):
         extracted_id = final_report["wras_analysis"].get("wras_id")
         wras_ids = [x.strip() for x in extracted_id.split(',')]
 
-        st.write(extracted_id)
         if extracted_id:
             final_report["wras_online_check"] = verify_wras_online(extracted_id)
 
