@@ -13,7 +13,16 @@ import pypdf # NEW LIBRARY
 import io
 # --- 1. CONFIGURATION & SETUP ---
 load_dotenv()
-st.set_page_config(page_title="NAMA Compliance Agent", layout="wide",toolbar_mode="minimal")
+st.set_page_config(page_title="NAMA Compliance Agent", layout="wide")
+hide_streamlit_style = """
+<style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    div[data-testid="stToolbar"] {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_style, unsafeallow_html=True)
 
 # API Configuration
 # API Configuration
