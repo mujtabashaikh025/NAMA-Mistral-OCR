@@ -11,6 +11,7 @@ from datetime import datetime, date
 from dotenv import load_dotenv
 import pypdf # NEW LIBRARY
 import io
+import time
 
 # --- 1. CONFIGURATION & SETUP ---
 load_dotenv()
@@ -179,17 +180,10 @@ def verify_wras_online(wras_id):
 def clear_submit():
     # This function clears the file uploader state
     st.session_state.uploader_id += 1
+    if "analysis_result" in st.session_state:
+        del st.session_state["analysis_result"]
 
 # --- 5. UI & EXECUTION LOGIC ---
-# Hide Streamlit's default style
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            header {visibility: hidden;}
-            footer {visibility: hidden;}
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
 st.title("📝 Intelligent Vendor Compliance Engine")
 
 if "uploader_id" not in st.session_state:
@@ -197,6 +191,8 @@ if "uploader_id" not in st.session_state:
 
 uploaded_files = st.file_uploader("Upload Vendor Documents", type=["pdf"], accept_multiple_files=True,key=f"file_uploader_{st.session_state.uploader_id}")
 if uploaded_files:
+    with st.spinner("Processing uploaded files..."):
+        time.sleep(1)
     st.success(f"Loaded {len(uploaded_files)} files.")
     st.button("Clear", on_click=clear_submit)
     if st.button("Run Audit", type="primary"):
@@ -283,10 +279,6 @@ if uploaded_files:
 
         st.metric("💧 WRAS Status", wras_data.get("status", "N/A"), border=True)
         if wras_url != "#": st.dataframe(df_wras, column_config={"Link": st.column_config.LinkColumn("Verify")}, use_container_width=True)
-
-
-        # st.metric("💧 WRAS Status", wras_data.get("status", "N/A"), border=True)
-        # if wras_url != "#": st.link_button("🔍 Verify", wras_url)
 
         st.subheader("❌ Missing Documents")
         if res["missing_documents"]:
