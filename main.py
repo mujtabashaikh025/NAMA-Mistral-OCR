@@ -4,6 +4,12 @@ from PIL import Image
 #compliance_page = st.Page(page="pages/compliance.py", title="🚀 Report Generation")
 # st.image("nama-logo.png")
 
+st.markdown("""
+    <style>
+        .stAppDeployButton {display:none;}
+        header {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
 
 # 1. Open the images
 img1 = Image.open("nama-logo.png")
