@@ -118,7 +118,7 @@ def batch_extract_all(files):
 
 # --- 3. BATCHED AI ANALYSIS ---
 def analyze_batch(batch_text_list):
-    model = genai.GenerativeModel('gemini-2.5-pro',temperature =0.0) 
+    model = genai.GenerativeModel('gemini-2.5-pro',generation_config={"temperature": 0.0})
     today_str = date.today().strftime("%Y-%m-%d")
 
     prompt = f"""
@@ -194,7 +194,7 @@ if st.button("Run Audit", type="primary"):
         # 2. Parallel AI Analysis
         final_report = {
             "iso_analysis": [],
-            "wras_analysis": {"found": False, "wras_id": "123"},
+            "wras_analysis": {"found": False, "wras_id": []},
             "found_documents": [],
             "missing_documents": set(REQUIRED_DOCS),
             "wras_online_check": {"status": "N/A", "url": "#"}
@@ -245,19 +245,30 @@ if "analysis_result" in st.session_state:
     
     wras_data = res.get("wras_online_check", {})
     wras_url = wras_data.get("url", "#")
+    
+    col1, col2 = st.columns(2)  
+    col1.metric("⛔ Missing Docs", f"{no_of_missing_docs}", border=True)
+    col2.metric("🏆 Score", f"{doc_score}%", border=True)
+
+
+
     wras_list = []
     for i in wras_ids:
         search_url = f"https://www.wrasapprovals.co.uk/approvals-directory/?search={i}"
-        wras_list.append(search_url)
+        
+        wras_list.append({
+        "WRAS ID": i,
+        "Link": search_url
+        })
+    # Convert to DataFrame
+    df_wras = pd.DataFrame(wras_list)
 
-    #st.write(wras_list)
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("💧 WRAS Status", wras_data.get("status", "N/A"), border=True)
-        if wras_url != "#": st.link_button("🔍 Verify", wras_url)
-    
-    col2.metric("⛔ Missing Docs", f"{no_of_missing_docs}", border=True)
-    col3.metric("🏆 Score", f"{doc_score}%", border=True)
+    st.metric("💧 WRAS Status", wras_data.get("status", "N/A"), border=True)
+    st.dataframe(df_wras, column_config={"Link": st.column_config.LinkColumn("Search URL")}, use_container_width=True)
+
+
+    # st.metric("💧 WRAS Status", wras_data.get("status", "N/A"), border=True)
+    # if wras_url != "#": st.link_button("🔍 Verify", wras_url)
 
     st.subheader("❌ Missing Documents")
     if res["missing_documents"]:
