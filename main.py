@@ -1,16 +1,5 @@
 import streamlit as st
 # 1. Page Configuration
-
-# Hide Streamlit's default style
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            header {visibility: hidden;}
-            footer {visibility: hidden;}
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
-
 st.set_page_config(
     page_title="Document Verification Portal",
     layout="wide",  # This makes the layout span the full width like your screenshot
