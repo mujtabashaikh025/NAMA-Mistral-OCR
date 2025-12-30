@@ -11,16 +11,9 @@ from datetime import datetime, date
 from dotenv import load_dotenv
 import pypdf # NEW LIBRARY
 import io
-
-st.markdown("""
-    <style>
-        .stAppDeployButton {display:none;}
-        header {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
 # --- 1. CONFIGURATION & SETUP ---
 load_dotenv()
-st.set_page_config(page_title="NAMA Compliance Agent", layout="wide")
+st.set_page_config(page_title="NAMA Compliance Agent", layout="wide",toolbar_mode="minimal")
 
 # API Configuration
 # API Configuration
