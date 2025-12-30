@@ -69,15 +69,14 @@ def get_compliance_table(pdf_bytes, key):
         return []
 
 # --- 3. STREAMLIT UI ---
-
 st.title("📑 Smart Compliance Report Generator")
-st.markdown("Upload a Vendor Specification PDF to auto-extract the **Compliance Table**.")
+#st.markdown("**Upload a Vendor Specification Compliance Statement**.")
 
-uploaded_file = st.file_uploader("Upload Compliance Statement PDF", type=["pdf"])
+uploaded_file = st.file_uploader("**Upload Compliance Statement PDF**", type=["pdf"])
 
-if uploaded_file and st.button("Generate Compliance Table"):
+if uploaded_file and st.button("Generate Report",type="primary"):
     
-    with st.spinner("👀 Analyzing PDF Image & Compliance..."):
+    with st.spinner("👀 Analyzing Statement & Compliance..."):
         
         bytes_data = uploaded_file.getvalue()
         
