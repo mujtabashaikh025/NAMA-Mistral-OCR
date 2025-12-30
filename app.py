@@ -181,6 +181,15 @@ def clear_submit():
     st.session_state.uploader_id += 1
 
 # --- 5. UI & EXECUTION LOGIC ---
+# Hide Streamlit's default style
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 st.title("📝 Intelligent Vendor Compliance Engine")
 
 if "uploader_id" not in st.session_state:
